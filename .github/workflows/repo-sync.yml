@@ -1,0 +1,33 @@
+name: Sync changes from upstream repo
+
+on:
+  workflow_call:
+    inputs:
+      # Input must be formatted as "owner/repo", e.g. "lurk-lab/lurk-rs"
+      repository:
+        required: true
+        type: string
+      source-branch:
+        required: false 
+        default: 'main'
+        type: string
+      dest-branch:
+        required: false 
+        default: 'main'
+        type: string
+
+jobs:
+  repo-sync:
+    name: Sync changes from upstream
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - name: repo-sync
+      uses: repo-sync/github-sync@v2
+      with:
+        source_repo: "https://github.com/${{ inputs.repository }}.git"
+        source_branch: "${{ inputs.source-branch }}"
+        destination_branch: "${{ inputs.dest-branch }}"
+        github_token: ${{ secrets.GITHUB_TOKEN }}

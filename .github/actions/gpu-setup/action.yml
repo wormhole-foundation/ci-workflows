@@ -1,0 +1,39 @@
+name: Nvidia GPU setup
+
+description: Set CUDA/OpenCL-related env vars
+
+inputs:
+  gpu-framework:
+    description: 'cuda or opencl'
+    required: false
+    default: 'cuda'
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    # Check we have access to the machine's Nvidia drivers
+    - run: nvidia-smi
+      shell: bash
+    # Check that CUDA is installed with a driver-compatible version
+    # This must also be compatible with the GPU architecture, see below link
+    - run: nvcc --version
+      shell: bash
+    - name: Set env vars
+      run: |
+        echo "GPU_NAME=$(nvidia-smi --query-gpu=gpu_name --format=csv,noheader,nounits | tail -n1)" | tee -a $GITHUB_ENV
+        if [ "${{ inputs.gpu-framework }}" = "cuda" ];
+        then
+          # The `compute`/`sm` number corresponds to the Nvidia GPU architecture (e.g. Ampere, Ada)
+          # In order to use any GPU with this action, we want this to be configurable
+          # See https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+          CUDA_ARCH=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | sed 's/\.//g')
+          echo "EC_GPU_CUDA_NVCC_ARGS=--fatbin --gpu-architecture=sm_$CUDA_ARCH --generate-code=arch=compute_$CUDA_ARCH,code=sm_$CUDA_ARCH" | tee -a $GITHUB_ENV
+          echo "CUDA_ARCH=$CUDA_ARCH" | tee -a $GITHUB_ENV
+          echo "EC_GPU_FRAMEWORK=cuda" | tee -a $GITHUB_ENV
+        else
+          # Check that OpenCL is installed correctly
+          clinfo
+          echo "EC_GPU_FRAMEWORK=opencl" | tee -a $GITHUB_ENV
+        fi
+      shell: bash
