@@ -1,0 +1,61 @@
+name: Run code quality checks
+
+on:
+  workflow_call:
+
+jobs:
+  wasm-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: rustup target add wasm32-unknown-unknown
+      - name: Wasm build 
+        run: cargo build --target wasm32-unknown-unknown
+
+  # Rustfmt, clippy, and doctests
+  code-quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Check Rustfmt Code Style
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - name: Check clippy warnings
+        run: |
+          if alias xclippy >/dev/null 2>&1; then 
+            cargo xclippy
+          else 
+            cargo clippy
+          fi
+      - name: Doctests
+        run: cargo test --doc --workspace
+
+  # Check MSRV in `Cargo.toml` is valid
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install rustup
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - uses: Swatinem/rust-cache@v2
+    - name: Install cargo-msrv
+      run: cargo install cargo-msrv
+    - name: Check Rust MSRV
+      run: cargo msrv verify 
