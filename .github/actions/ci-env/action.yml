@@ -29,3 +29,4 @@ runs:
   using: "composite"
   steps: 
   - run: echo "CI env vars set"
+    shell: bash
