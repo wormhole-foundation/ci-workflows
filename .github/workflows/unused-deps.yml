@@ -1,6 +1,6 @@
-# Runs a series of sanity checks for crate consumers.
+# Runs unused dependency check for crate consumers.
 
-name: sanity
+name: Unused dependency check
 
 on:
   # we expect dependents to call this on a nightly basis
