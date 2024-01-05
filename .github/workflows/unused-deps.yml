@@ -1,0 +1,38 @@
+# Runs unused dependency check for crate consumers.
+
+name: Unused dependency check
+
+on:
+  # we expect dependents to call this on a nightly basis
+  # schedule:
+  #  - cron: "0 0 * * *"
+  workflow_call: 
+    inputs:
+        # comma-separated list of features to check
+        features:
+          required: false
+          default: ""
+          type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  unused-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # udeps requires nightly
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: taiki-e/install-action@cargo-udeps
+      - name: Check for unused dependencies
+        run: cargo udeps --lib --features "${{ inputs.repository }}"
+      - uses: JasonEtco/create-an-issue@v2
+        if: ${{ failure() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOW_URL:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          update_existing: true
+          filename: .github/templates/UNUSED_DEPS_ISSUE.md
