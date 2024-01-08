@@ -7,14 +7,6 @@ on:
         required: false
         default: 'ubuntu-latest'
         type: string
-      # Name of the crate when imported by Lurk
-      dependency-name:
-          required: true
-          type: string
-      # Optional `Cargo.toml` `package` override
-      package-name:
-        required: false
-        type: string
 
 jobs:
   check-lurk-compiles:
@@ -36,15 +28,19 @@ jobs:
       - name: Patch Cargo.toml
         working-directory: ${{ github.workspace }}/lurk-rs
         run: |
+          URL=https://github.com/${{ github.repository }}
           # the dependency we want to patch is usually the same as the package, but
           # we e.g. want to override dependency 'nova' with an 'arecibo' package
-          echo "[patch.'https://github.com/${{ github.repository }}']" >> Cargo.toml
-          if [ ! -z "${{ inputs.package-name }}" ];
+          DEPENDENCY=$(grep "git = \"$URL\"" Cargo.toml | awk '{ print $1 }')
+          PACKAGE=$(grep "git = \"$URL\"" Cargo.toml | grep -oP 'package = "\K[^"]*'| cat)
+          echo "[patch.'$URL']" >> Cargo.toml                                       
+          if [ ! -z "$PACKAGE" ];                  
           then
-            echo "${{ inputs.dependency-name }} = { path='../', package='${{ inputs.package-name }}' }" >> Cargo.toml
+            echo "$DEPENDENCY = { path='../', package='$PACKAGE' }" >> Cargo.toml
           else
-            echo "${{ inputs.dependency-name }} = { path='../' }" >> Cargo.toml
+            echo "$DEPENDENCY = { path='../' }" >> Cargo.toml
           fi
       - name: Check Lurk-rs types don't break spectacularly
         working-directory: ${{ github.workspace }}/lurk-rs
         run: cargo check --workspace --tests --benches --examples
+
