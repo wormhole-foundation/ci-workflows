@@ -7,9 +7,6 @@ on:
         required: false
         default: 'ubuntu-latest'
         type: string
-      package-name:
-        required: false
-        type: string
 
 jobs:
   check-lurk-compiles:
@@ -21,26 +18,29 @@ jobs:
           repository: lurk-lab/ci-workflows
       - uses: ./.github/actions/ci-env
       - uses: actions/checkout@v4
-        with:
-          path: ${{ github.workspace }}/${{ github.repository }}
       - uses: actions/checkout@v4
         with:
           repository: lurk-lab/lurk-rs
-          path: ${{ github.workspace }}/lurk
+          path: ./lurk-rs
           submodules: recursive
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Patch Cargo.toml
-        working-directory: ${{ github.workspace }}/lurk
+        working-directory: ${{ github.workspace }}/lurk-rs
         run: |
-          REPOSITORY_NAME=$(echo ${{ github.repository }} | awk -F'/' '{ print $2 }')
-          echo "[patch.'https://github.com/${{ github.repository }}']" >> Cargo.toml
-          if [ ! -z "${{ inputs.package-name }}" ];
+          URL=https://github.com/${{ github.repository }}
+          # the dependency we want to patch is usually the same as the package, but
+          # we e.g. want to override dependency 'nova' with an 'arecibo' package
+          DEPENDENCY=$(grep "git = \"$URL\"" Cargo.toml | awk '{ print $1 }')
+          PACKAGE=$(grep "git = \"$URL\"" Cargo.toml | grep -oP 'package = "\K[^"]*'| cat)
+          echo "[patch.'$URL']" >> Cargo.toml                                       
+          if [ ! -z "$PACKAGE" ];                  
           then
-            echo " = { path='../$REPOSITORY_NAME', package='${{ inputs.package-name }}' }" >> Cargo.toml
+            echo "$DEPENDENCY = { path='../', package='$PACKAGE' }" >> Cargo.toml
           else
-            echo " = { path='../$REPOSITORY_NAME' }" >> Cargo.toml
+            echo "$DEPENDENCY = { path='../' }" >> Cargo.toml
           fi
       - name: Check Lurk-rs types don't break spectacularly
-        working-directory: ${{ github.workspace }}/lurk
+        working-directory: ${{ github.workspace }}/lurk-rs
         run: cargo check --workspace --tests --benches --examples
+
