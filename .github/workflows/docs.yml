@@ -14,13 +14,10 @@ jobs:
       - uses: ./.github/actions/ci-env
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
       - name: Generate documentation
         env:
           RUSTDOCFLAGS: "--enable-index-page -Zunstable-options"
+          RUSTC_BOOTSTRAP: 1
         run: |
           cargo doc --workspace --no-deps
       - name: Deploy documentation
